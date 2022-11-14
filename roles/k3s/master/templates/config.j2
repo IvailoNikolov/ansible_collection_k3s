@@ -1,0 +1,20 @@
+datastore-endpoint: {{ k3s_datastore_endpoint }}
+write-kubeconfig-mode: {{ k3s_write_kubeconfig_mode }}
+node-ip: {{ inventory_hostname  | default('k3s_node_ip') }}
+flannel-iface: {{ k3s_flannel_iface }}
+bind-address: {{ k3s_bind_address }}
+https-listen-port: {{ k3s_https_listen_port }}
+advertise-address: {{ master_ip | default('k3s_node_ip') }}
+advertise-port: {{ k3s_advertise_port }}
+tls-san: {{ master_ip }}
+cluster-cidr: {{ k3s_cluster_cidr }}
+service-cidr: {{ k3s_service_cidr }}
+service-node-port-range: {{ k3s_service_node_port_range }}
+cluster-dns: {{ k3s_cluster_dns }}
+cluster-domain: {{ k3s_cluster_domain }}
+flannel-backend: {{ k3s_flannel_backend }}
+disable: {{ k3s_disable }}
+token: {{ k3s_token }}
+{% if status_code_kubernetes_api.stdout == '200' %}
+server: https://{{ master_ip }}:{{ k3s_advertise_port }}
+{% endif %}

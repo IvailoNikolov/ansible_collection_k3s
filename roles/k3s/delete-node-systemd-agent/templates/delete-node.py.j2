@@ -1,0 +1,159 @@
+from kubernetes import client
+import socket
+import subprocess
+import os
+import sys
+import signal
+import logging
+from logging.handlers import RotatingFileHandler
+
+K3S_SERVER_URL= "https://{{ master_ip }}:{{ k3s_advertise_port }}"
+K3S_API_AUTHORIZATION = '{{ hostvars['K8S_TOKEN_HOLDER']['token'] }}'
+K3S_API_CA = "{{ script_location }}/ca.crt"
+LOG_FILE_Location = "{{ log_location }}"
+
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('delete-node')
+logger.setLevel(logging.DEBUG)
+filehandler = RotatingFileHandler(f'{LOG_FILE_Location}/delete-node.log', mode='a+', maxBytes=2000000, backupCount=10)
+filehandler.setFormatter(formatter)
+logger.addHandler(filehandler)
+streamhandler = logging.StreamHandler(sys.stdout)
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+
+
+def log_function(step, message):
+    def decorator(fun):
+        def wrapper(*args, **kwargs):
+            logger.info(f'BEFORE - {step} - {message}')
+            result = fun(*args, **kwargs)
+            logger.info(f'AFTER - {step}')
+            return result
+        return wrapper
+    return decorator
+
+
+@log_function('get node ip', 'Get the node IP')
+def get_my_ip_address(remote_server="google.com"):
+    """
+    Return the/a network-facing IP number for this system.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.connect((remote_server, 80))
+        return str(s.getsockname()[0])
+
+@log_function('Drain K3S', 'drain node')
+def drain_k3s_node(cluster_config):
+    node_name = cluster_config['current_member_node_name']
+    try:
+        subprocess.Popen(f'kubectl drain {node_name} --ignore-daemonsets --force --grace-period=60', shell=True)
+
+    except Exception as e:
+        logger.exception(e)
+
+def get_pid(name):
+    return map(int,subprocess.check_output(["pidof",name]).split())
+
+@log_function('Stop K3S', 'Stop the K3S service')
+def stop_k3s_service():
+    """Stop the k3s service
+    """
+    
+    k3s_pids = get_pid('k3s-agent')
+
+    for pid in k3s_pids:
+        os.kill(int(pid), signal.SIGKILL)
+
+    try:
+        subprocess.Popen('service k3s-node stop', shell=True)
+
+    except Exception as e:
+        logger.exception(e)
+
+@log_function('Get configuration', 'retrieve script parameter from cluster')
+def get_cluster_current_config(node_ip:str)->dict:
+    """Get current cluster configuration
+
+    Args:
+        node_ip (str): node IP address
+
+    Returns:
+        dict: cluster configuration
+    """
+    current_member_node_name = ""
+
+    configuration = client.Configuration()
+    # Configure API key authorization: BearerToken
+    configuration.api_key['authorization'] = K3S_API_AUTHORIZATION
+    configuration.api_key_prefix['authorization'] = 'Bearer'
+    configuration.ssl_ca_cert = K3S_API_CA
+    configuration.host = K3S_SERVER_URL
+
+    with client.ApiClient(configuration) as api_client:
+        api = client.CoreV1Api(api_client)
+
+        label_selector  = 'node-role.kubernetes.io/master!=true'
+
+        nodes = api.list_node(label_selector=label_selector)
+
+        node_name = [
+            i.metadata.name
+            for i in nodes.items
+            if (
+                (i.metadata.annotations.get('k3s.io/internal-ip') == node_ip)
+                or (i.metadata.annotations.get('k3s.io/external-ip') == node_ip)
+            )]
+
+        if node_name:
+            current_member_node_name= node_name[0]
+    return {
+        'node_ip': node_ip,
+        'current_member_node_name': current_member_node_name
+    }
+
+
+@log_function('remove node from cluster', 'The node is being remove from Kubernetes cluster')
+def delete_node(cluster_config:dict):
+    """Delete current node from cluster
+
+    Args:
+        cluster_config (dict): cluster configuration
+    """
+    # Enter a context with an instance of the API kubernetes.client
+    configuration = client.Configuration()
+    # Configure API key authorization: BearerToken
+    configuration.api_key['authorization'] = K3S_API_AUTHORIZATION
+    configuration.api_key_prefix['authorization'] = 'Bearer'
+    configuration.ssl_ca_cert = K3S_API_CA
+    configuration.host = K3S_SERVER_URL
+
+    node_name = cluster_config['current_member_node_name']
+
+    with client.ApiClient(configuration) as api_client:
+        api = client.CoreV1Api(api_client)
+        
+        try:
+            api_response = api.delete_node(node_name, grace_period_seconds=30)
+            logger.info(f'node remove from cluster {node_name}')
+        except Exception as e:
+            logger.exception(e)
+
+
+if __name__ == '__main__':
+
+    logger.info(f"The node is currently being stop.")
+
+    current_node_ip = get_my_ip_address()
+    cluster_config = get_cluster_current_config(current_node_ip)
+
+    logger.info(f'current cluster config {cluster_config}')
+
+    drain_k3s_node(cluster_config)
+    
+    stop_k3s_service()
+
+    delete_node(cluster_config)
+
+    logger.info(f"The node is fully remove from the cluster")

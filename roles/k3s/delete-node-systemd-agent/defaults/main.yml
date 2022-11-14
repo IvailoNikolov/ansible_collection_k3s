@@ -1,0 +1,4 @@
+---
+script_location: /var/lib/rancher/delete-node
+k3s_advertise_port: "6443"
+log_location: /var/log/delete-node

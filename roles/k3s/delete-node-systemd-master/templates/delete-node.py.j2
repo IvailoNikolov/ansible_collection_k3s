@@ -1,0 +1,230 @@
+from kubernetes import client
+import yaml
+import socket
+
+import subprocess
+
+import os
+import sys
+import signal
+import shutil
+import functools
+import logging
+from logging.handlers import RotatingFileHandler
+
+import etcd3
+from urllib.parse import urlparse
+
+ETCDCTL_ENDPOINTS='https://127.0.0.1:2379'
+ETCDCTL_CACERT='/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt'
+ETCDCTL_CERT='/var/lib/rancher/k3s/server/tls/etcd/server-client.crt'
+ETCDCTL_KEY='/var/lib/rancher/k3s/server/tls/etcd/server-client.key'
+K3S_CONFIG_YAML='/etc/rancher/k3s/config.yaml'
+K3S_SERVER_URL= "https://{{ master_ip }}:{{ k3s_advertise_port }}"
+K3S_API_AUTHORIZATION = '{{ hostvars['K8S_TOKEN_HOLDER']['token'] }}'
+K3S_API_CA = "{{ script_location }}/ca.crt"
+LOG_FILE_Location = "{{ log_location }}"
+
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+logger = logging.getLogger('delete-node')
+logger.setLevel(logging.DEBUG)
+filehandler = RotatingFileHandler(f'{LOG_FILE_Location}/delete-node.log', mode='a+', maxBytes=2000000, backupCount=10)
+filehandler.setFormatter(formatter)
+logger.addHandler(filehandler)
+
+streamhandler = logging.StreamHandler(sys.stdout)
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+
+
+def log_function(step, message):
+    def decorator(fun):
+        def wrapper(*args, **kwargs):
+            logger.info(f'BEFORE - {step} - {message}')
+            result = fun(*args, **kwargs)
+            logger.info(f'AFTER - {step}')
+            return result
+        return wrapper
+    return decorator
+
+@log_function('remove etcd file', 'The etcd is beeing reset')
+def remove_etcd_db(dir):
+    # make a backup-folder delete is exist
+    dir_backup_name = f'{dir}_backup'
+
+    if os.path.isdir(dir_backup_name):
+        for files in os.listdir(dir):
+            path = os.path.join(dir, files)
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                os.remove(path)
+    
+    os.rename(dir, dir_backup_name)
+
+
+@log_function('get node ip', 'Get the node IP')
+def get_my_ip_address(remote_server="google.com"):
+    """
+    Return the/a network-facing IP number for this system.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.connect((remote_server, 80))
+        return str(s.getsockname()[0])
+
+@log_function('Drain K3S', 'drain node')
+def drain_k3s_node(cluster_config):
+    node_name = cluster_config['current_member_node_name']
+    try:
+        subprocess.Popen(f'kubectl drain {node_name} --ignore-daemonsets --force --grace-period=60', shell=True)
+
+    except Exception as e:
+        logger.exception(e)
+
+def get_pid(name):
+    return map(int,subprocess.check_output(["pidof",name]).split())
+
+@log_function('Stop K3S', 'Stop the K3S service')
+def stop_k3s_service():
+    
+    k3s_pids = get_pid('k3s-server')
+
+    for pid in k3s_pids:
+        os.kill(int(pid), signal.SIGKILL)
+
+    try:
+        subprocess.Popen('service k3s stop', shell=True)
+
+    except Exception as e:
+        logger.exception(e)
+
+@log_function('Get configuration', 'retrieve script parameter from cluster')
+def get_cluster_current_config(node_ip):
+    members = []
+    current_member_id = ""
+    current_member_node_name = ""
+
+    etcd = etcd3.client(
+        host="127.0.0.1",
+        port=2379,
+        ca_cert=ETCDCTL_CACERT,
+        cert_key=ETCDCTL_KEY,
+        cert_cert=ETCDCTL_CERT)
+
+    if len([m.id for m in etcd.members]) >= 2:
+        for member in etcd.members:
+            member_is_current_node = any([ node_ip in url for url in member.peer_urls ])
+            logger.info(str(member.peer_urls[0]))
+            netloc = urlparse(str(member.peer_urls[0])).netloc
+            url =  netloc.split(':')[0]
+            if member_is_current_node:
+                current_member_id = member.id
+            else:
+                members.append(url)
+
+    if members:
+        configuration = client.Configuration()
+        # Configure API key authorization: BearerToken
+        configuration.api_key['authorization'] = K3S_API_AUTHORIZATION
+        configuration.api_key_prefix['authorization'] = 'Bearer'
+        configuration.ssl_ca_cert = K3S_API_CA
+        host = members[0]
+        configuration.host = f"https://{host}:6445"
+
+        with client.ApiClient(configuration) as api_client:
+            api = client.CoreV1Api(api_client)
+
+            label_selector  = 'node-role.kubernetes.io/master=true'
+
+            nodes = api.list_node(label_selector=label_selector)
+
+            node_name = [
+                i.metadata.name
+                for i in nodes.items
+                if (
+                    (i.metadata.annotations.get('k3s.io/internal-ip') == node_ip)
+                    or (i.metadata.annotations.get('k3s.io/external-ip') == node_ip)
+                )]
+
+            if node_name:
+                current_member_node_name= node_name[0]
+    return {
+        'members_url':              members,
+        'current_member_id':        current_member_id,
+        'current_member_node_name': current_member_node_name
+    }
+
+@log_function('remove node from etcd', 'The node is being remove from ETCD cluster')
+def remove_etcd(cluster_config):
+    for host in cluster_config['members_url']:
+        etcd = etcd3.client(
+            host=host,
+            port=2379,
+            ca_cert=ETCDCTL_CACERT,
+            cert_key=ETCDCTL_KEY,
+            cert_cert=ETCDCTL_CERT)
+
+        try:
+            etcd.remove_member(cluster_config['current_member_id'])
+            logger.info(f'node remove from etcd {host}')
+        except Exception as e:
+            logger.exception(e)
+
+@log_function('remove node from cluster', 'The node is being remove from Kubernetes cluster')
+def delete_node(cluster_config):
+    # Enter a context with an instance of the API kubernetes.client
+    for host in cluster_config['members_url']:
+        configuration = client.Configuration()
+        # Configure API key authorization: BearerToken
+        configuration.api_key['authorization'] = K3S_API_AUTHORIZATION
+        configuration.api_key_prefix['authorization'] = 'Bearer'
+        configuration.ssl_ca_cert = K3S_API_CA
+        configuration.host = f"https://{host}:6445"
+
+        with client.ApiClient(configuration) as api_client:
+            api = client.CoreV1Api(api_client)
+
+            try:
+                api_response = api.delete_node(cluster_config['current_member_node_name'], grace_period_seconds=30)
+                logger.info(f'node remove from cluster {host}')
+            except Exception as e:
+                logger.exception(e)
+
+@log_function('update k3s config', 'make the k3s config compliant to multi master mode')
+def update_k3s_config():
+
+    stream = open(K3S_CONFIG_YAML, 'r')
+    data = yaml.safe_load(stream)
+
+    data['server'] = K3S_SERVER_URL
+
+    with open(K3S_CONFIG_YAML, 'w') as yaml_file:
+        yaml_file.write( yaml.dump(data, default_flow_style=False))
+
+
+if __name__ == '__main__':
+
+    logger.info(f"The node is currently being stop. let's remove him from the cluster quorum")
+
+    current_node_ip = get_my_ip_address()
+    logger.info(f'node current IP {current_node_ip}')
+
+    cluster_config = get_cluster_current_config(current_node_ip)
+    logger.info(f'current cluster config {cluster_config}')
+
+    if cluster_config['members_url']:
+        drain_k3s_node(cluster_config)
+        
+        remove_etcd(cluster_config)
+
+        stop_k3s_service()
+
+        delete_node(cluster_config)
+
+        remove_etcd_db('/var/lib/rancher/k3s/server/db')
+
+        update_k3s_config()
+
+        logger.info(f"The node is fully remove from the cluster")

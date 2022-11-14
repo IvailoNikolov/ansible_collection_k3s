@@ -1,0 +1,36 @@
+global_defs {
+    enable_script_security
+    script_user root
+}
+vrrp_script chk_service {      
+        script /etc/keepalived/check_script.sh
+        interval 2                      # check every 2 seconds
+}
+vrrp_instance VI_1 {
+    state {{ keepalived_role }}
+    interface {{ keepalived_shared_iface }}
+    virtual_router_id {{ keepalived_router_id }}
+    priority {{ keepalived_priority }} 
+    advert_int 1
+
+    unicast_src_ip {{ ansible_host }}
+    unicast_peer {
+{% for host in groups['master'] %}
+{% if host not in ansible_all_ipv4_addresses %}
+        {{ host }}
+{% endif %}
+{% endfor %}
+    }
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived_auth_pass }}
+    }
+    virtual_ipaddress {
+      {{ keepalived_shared_ip }} dev {{ keepalived_shared_iface }}
+    }
+    track_script {
+        chk_service
+    }
+    notify_master /etc/keepalived/failover.sh
+}

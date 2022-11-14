@@ -1,0 +1,45 @@
+---
+
+- name: Install KeepAlived
+  ansible.builtin.package:
+    name: keepalived
+    state: present
+
+- name: install oci cli
+  pip:
+    name:
+      - oci-cli
+    state: present
+    executable: pip3.9
+
+- name: Install check script
+  ansible.builtin.template: 
+    src: "templates/check_script.sh.j2"
+    dest: "/etc/keepalived/check_script.sh"
+    mode: 0755
+    owner: root
+    group: root
+  tags: keepalived
+  notify: restart keepalived
+
+- name: Install failover script
+  ansible.builtin.template: 
+    src: "templates/failover.sh.j2"
+    dest: "/etc/keepalived/failover.sh"
+    mode: 0755
+    owner: root
+    group: root
+  tags: keepalived
+  
+- name: Keepalived configuration
+  ansible.builtin.template: 
+    src: keepalived.conf.j2 
+    dest: /etc/keepalived/keepalived.conf
+  tags: keepalived
+  notify: restart keepalived
+
+- name: Ensure KeepAlived is started and enabled on boot.
+  ansible.builtin.service:
+    name: keepalived
+    enabled: yes
+    state: started

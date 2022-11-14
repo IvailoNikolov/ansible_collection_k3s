@@ -1,0 +1,2 @@
+#!/bin/bash
+oci network vnic assign-private-ip --ip-address {{ keepalived_shared_ip }} --unassign-if-already-assigned --vnic-id {{ vnic_id }}  --auth instance_principal > /dev/null

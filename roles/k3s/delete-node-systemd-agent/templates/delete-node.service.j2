@@ -1,0 +1,14 @@
+[Unit]
+Description=Remove agent from cluster before shutdown
+DefaultDependencies=no
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python {{ script_location }}/main.py
+TimeoutStartSec=0
+User=root
+Group=root
+
+[Install]
+WantedBy=shutdown.target
