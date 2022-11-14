@@ -3,7 +3,9 @@ write-kubeconfig-mode: {{ k3s_write_kubeconfig_mode }}
 node-ip: {{ inventory_hostname  | default('k3s_node_ip') }}
 flannel-iface: {{ k3s_flannel_iface }}
 bind-address: {{ k3s_bind_address }}
+{% if is_ha %}
 https-listen-port: {{ k3s_https_listen_port }}
+{% endif %}
 advertise-address: {{ master_ip | default('k3s_node_ip') }}
 advertise-port: {{ k3s_advertise_port }}
 tls-san: {{ master_ip }}
@@ -15,6 +17,6 @@ cluster-domain: {{ k3s_cluster_domain }}
 flannel-backend: {{ k3s_flannel_backend }}
 disable: {{ k3s_disable }}
 token: {{ k3s_token }}
-{% if status_code_kubernetes_api.stdout == '200' %}
-server: https://{{ master_ip }}:{{ k3s_advertise_port }}
+{% if (is_ha) and (not is_first) %}
+server: https://{{ first_master_ip }}:{{ k3s_https_listen_port }}
 {% endif %}

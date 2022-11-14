@@ -7,7 +7,7 @@
     owner: root
     group: root
     mode: 0755
-  notify: reload k3s
+  notify: restarted k3s
 
 - name: Enable and check K3s service
   systemd:

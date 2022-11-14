@@ -1,15 +1,19 @@
 ---
+- name: get ip_variable
+  set_fact:
+    ip_variable: "ansible_{{ k3s_flannel_iface }}"
+
+- name: Is install HA
+  set_fact:
+    is_ha: "{{ groups['master']  | length >= 2 }}"
+    is_first: "{{  groups.master.index(inventory_hostname) == 0 }}"
+    first_master_ip: "{{ hostvars[groups['master'][0]][ip_variable].ipv4.address }}"
 
 - name: Create a directory for K3S config
   ansible.builtin.file:
     path: "/etc/rancher/k3s"
     state: directory
     mode: '0644'
-
-- name: check if other master are up and ready
-  command: "curl https://{{ master_ip }}:{{ k3s_advertise_port }}/cacerts -kfs -o /dev/null -w '%{http_code}'"
-  register: status_code_kubernetes_api
-  ignore_errors: True
   
 - name: Copy K3s config file
   register: k3s_service
@@ -29,7 +33,7 @@
     owner: root
     group: root
     mode: 0644
-  notify: reload k3s
+  notify: restart k3s
 
 - name: Enable and check K3s service
   systemd:
@@ -71,3 +75,13 @@
     src: /usr/local/bin/k3s
     dest: /usr/local/bin/crictl
     state: link
+
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  shell: |
+    swapoff -a
+
+- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'

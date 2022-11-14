@@ -70,7 +70,6 @@
     name: 
       - python3.9
       - python3-pip
-      - python3.9-distutils
     state: present
 
 - name: Install Python 3.9 and reset selection to auto

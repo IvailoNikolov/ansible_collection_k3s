@@ -1,9 +1,14 @@
 ---
 
+- name: Is install HA
+  set_fact:
+    is_ha: "{{ groups['master']  | length }}"
+
 - name: Install haproxy
   ansible.builtin.package:
     name: haproxy
     state: present
+  when: "{{ is_ha }} >= 2"
 
 - name: Copy HAProxy configuration in place.
   ansible.builtin.template:
@@ -12,9 +17,19 @@
     mode: 0644
     validate: haproxy -f %s -c -q
   notify: restart haproxy
+  when: "{{ is_ha }} >= 2"
 
 - name: Ensure HAProxy is started and enabled on boot.
   ansible.builtin.service:
     name: haproxy
     enabled: yes
     state: started
+  when: "{{ is_ha }} >= 2"
+
+- name: Ensure HAProxy is not started and not enabled on boot.
+  ansible.builtin.service:
+    name: haproxy
+    enabled: no
+    state: stopped
+  when: "{{ is_ha }} ==  1"
+  ignore_errors: yes

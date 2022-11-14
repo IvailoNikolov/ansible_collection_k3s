@@ -1,9 +1,14 @@
 ---
 
+- name: Is install HA
+  set_fact:
+    is_ha: "{{ groups['master']  | length >= 2 }}"
+
 - name: Install KeepAlived
   ansible.builtin.package:
     name: keepalived
     state: present
+  when: "{{ is_ha }}"
 
 - name: install oci cli
   pip:
@@ -11,6 +16,7 @@
       - oci-cli
     state: present
     executable: pip3.9
+  when: "{{ is_ha }}"
 
 - name: Install check script
   ansible.builtin.template: 
@@ -21,6 +27,7 @@
     group: root
   tags: keepalived
   notify: restart keepalived
+  when: "{{ is_ha }}"
 
 - name: Install failover script
   ansible.builtin.template: 
@@ -30,6 +37,7 @@
     owner: root
     group: root
   tags: keepalived
+  when: "{{ is_ha }}"
   
 - name: Keepalived configuration
   ansible.builtin.template: 
@@ -37,9 +45,19 @@
     dest: /etc/keepalived/keepalived.conf
   tags: keepalived
   notify: restart keepalived
+  when: "{{ is_ha }}"
 
 - name: Ensure KeepAlived is started and enabled on boot.
   ansible.builtin.service:
     name: keepalived
     enabled: yes
     state: started
+  when: "{{ is_ha }}"
+
+- name: Ensure KeepAlived is started and enabled on boot.
+  ansible.builtin.service:
+    name: keepalived
+    enabled: no
+    state: stopped
+  when: "{{ not is_ha }}"
+  ignore_errors: yes

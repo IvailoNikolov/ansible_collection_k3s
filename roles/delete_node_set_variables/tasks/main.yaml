@@ -21,11 +21,17 @@
     namespace: kube-system
   register: sa_manage_node
 
+- name: Deploy Service Account secret
+  kubernetes.core.k8s:
+    state: present
+    template:
+      - path: '../templates/serviceaccountsecret.yml.j2'
+
 - name: Get Secret detail
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Secret
-    name: "{{ sa_manage_node['resources'][0]['secrets'][0]['name'] }}"
+    name: manage-node
     namespace: kube-system
   register: sa_manage_node_secrets
 
