@@ -1,13 +1,13 @@
 ---
-- name: set_fact_release_name
-  github_get_release_name:
+- name: Set_fact_release_name
+  frantchenco.k3s.github_get_release_name:
     owner: "{{ k3s_github_owner }}"
     repo: "{{ k3s_github_repo }}"
     release_name: "{{ k3s_github_release_name }}"
   register: release_name
 
 - name: Download k3s binary x64
-  get_url:
+  ansible.builtin.get_url:
     url: "https://github.com/{{ k3s_github_owner }}/{{ k3s_github_repo }}/releases/download/{{ release_name.release_name }}/k3s"
     checksum: "sha256:https://github.com/{{ k3s_github_owner }}/{{ k3s_github_repo }}/releases/download/{{ release_name.release_name }}/sha256sum-amd64.txt"
     dest: "/usr/local/bin/k3s"
@@ -17,7 +17,7 @@
   when: ansible_facts.architecture == "x86_64"
 
 - name: Download k3s binary arm64
-  get_url:
+  ansible.builtin.get_url:
     url: "https://github.com/{{ k3s_github_owner }}/{{ k3s_github_repo }}/releases/download/{{ release_name.release_name }}/k3s-arm64"
     checksum: "sha256:https://github.com/{{ k3s_github_owner }}/{{ k3s_github_repo }}/releases/download/{{ release_name.release_name }}/sha256sum-arm64.txt"
     dest: "/usr/local/bin/k3s"
@@ -30,7 +30,7 @@
       ansible_facts.architecture is search("aarch64")
 
 - name: Download k3s binary armhf
-  get_url:
+  ansible.builtin.get_url:
     url: "https://github.com/{{ k3s_github_owner }}/{{ k3s_github_repo }}/releases/download/{{ release_name.release_name }}/k3s-armhf"
     checksum: "sha256:https://github.com/{{ k3s_github_owner }}/{{ k3s_github_repo }}/releases/download/{{ release_name.release_name }}/sha256sum-arm.txt"
     dest: "/usr/local/bin/k3s"

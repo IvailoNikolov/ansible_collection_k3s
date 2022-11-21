@@ -1,24 +1,30 @@
 ---
 
-- name: install python kubernetes core pre-requisites
-  become: yes
-  pip:
+- name: Install python kubernetes core pre-requisites
+  become: true
+  ansible.builtin.pip:
     name:
       - pyyaml
       - kubernetes
 
 - name: Creates delete-node script location directory
-  file:
+  ansible.builtin.template:
     path: "{{ script_location }}"
     state: directory
+    owner: "root"
+    group: "root"
+    mode: 0700
 
 - name: Creates delete-node log directory
-  file:
+  ansible.builtin.template:
     path: "{{ log_location }}"
     state: directory
+    owner: "root"
+    group: "root"
+    mode: 0700
 
 - name: Copy K3s crt file
-  template:
+  ansible.builtin.template:
     src: "delete-node.crt.j2"
     dest: "{{ script_location }}/ca.crt"
     owner: "root"
@@ -26,15 +32,15 @@
     mode: 0700
 
 - name: Copy delete-node python script
-  template:
+  ansible.builtin.template:
     src: "delete-node.py.j2"
     dest: "{{ script_location }}/main.py"
     owner: "root"
     group: "root"
     mode: 0700
 
-- name: Copy delete-node service 
-  template:
+- name: Copy delete-node service
+  ansible.builtin.template:
     src: "delete-node.service.j2"
     dest: "{{ systemd_dir }}/delete-node.service"
     owner: "root"
@@ -43,6 +49,6 @@
 
 - name: Ensure delete-node is started and enabled on shutdown.
   ansible.builtin.service:
-    name: delete-node
-    enabled: yes
-    state: started
+    name: "delete-node"
+    enabled: "yes"
+    state: "started"

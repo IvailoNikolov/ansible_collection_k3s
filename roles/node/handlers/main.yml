@@ -1,6 +1,6 @@
 ---
 
-- name: restarted k3s
-  ansible.builtin.service: 
-    name: k3s-node 
-    state: restarted
+- name: Restarted k3s
+  ansible.builtin.service:
+    name: "k3s-node"
+    state: "restarted"

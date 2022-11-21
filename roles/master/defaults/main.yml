@@ -16,6 +16,6 @@ k3s_service_node_port_range: "30000-32767"
 k3s_cluster_dns: "10.43.0.10"
 k3s_cluster_domain: "cluster.local"
 k3s_flannel_backend: "vxlan"
-k3s_disable: 
+k3s_disable:
   - "traefik"
 k3s_secrets_encryption: "True"

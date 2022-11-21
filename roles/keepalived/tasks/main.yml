@@ -1,63 +1,66 @@
 ---
 
 - name: Is install HA
-  set_fact:
-    is_ha: "{{ groups['master']  | length >= 2 }}"
+  ansible.builtin.set_fact:
+    is_ha: "{{ groups['master'] | length >= 2 }}"
 
 - name: Install KeepAlived
   ansible.builtin.package:
     name: keepalived
     state: present
-  when: "{{ is_ha }}"
+  when: 'is_ha|bool'
 
-- name: install oci cli
-  pip:
+- name: Install oci cli
+  ansible.builtin.pip:
     name:
       - oci-cli
     state: present
     executable: pip3.9
-  when: "{{ is_ha }}"
+  when: 'is_ha|bool'
 
 - name: Install check script
-  ansible.builtin.template: 
+  ansible.builtin.template:
     src: "templates/check_script.sh.j2"
     dest: "/etc/keepalived/check_script.sh"
     mode: 0755
     owner: root
     group: root
   tags: keepalived
-  notify: restart keepalived
-  when: "{{ is_ha }}"
+  notify: Restart keepalived
+  when: 'is_ha|bool'
 
 - name: Install failover script
-  ansible.builtin.template: 
+  ansible.builtin.template:
     src: "templates/failover.sh.j2"
     dest: "/etc/keepalived/failover.sh"
     mode: 0755
     owner: root
     group: root
   tags: keepalived
-  when: "{{ is_ha }}"
-  
+  when: 'is_ha|bool'
+
 - name: Keepalived configuration
-  ansible.builtin.template: 
-    src: keepalived.conf.j2 
+  ansible.builtin.template:
+    src: keepalived.conf.j2
     dest: /etc/keepalived/keepalived.conf
+    mode: 0755
+    owner: root
+    group: root
   tags: keepalived
-  notify: restart keepalived
-  when: "{{ is_ha }}"
+  notify: Restart keepalived
+  when: 'is_ha|bool'
 
 - name: Ensure KeepAlived is started and enabled on boot.
   ansible.builtin.service:
-    name: keepalived
-    enabled: yes
-    state: started
-  when: "{{ is_ha }}"
+    name: "keepalived"
+    enabled: "yes"
+    state: "started"
+  when: 'is_ha|bool'
 
 - name: Ensure KeepAlived is started and enabled on boot.
   ansible.builtin.service:
-    name: keepalived
-    enabled: no
-    state: stopped
-  when: "{{ not is_ha }}"
-  ignore_errors: yes
+    name: "keepalived"
+    enabled: "no"
+    state: "stopped"
+  when: 'not is_ha|bool'
+  ignore_errors: true

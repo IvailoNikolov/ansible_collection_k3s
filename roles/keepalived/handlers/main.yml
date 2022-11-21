@@ -1,11 +1,11 @@
 ---
 
-- name: restart keepalived
-  ansible.builtin.service: 
-    name: keepalived 
+- name: Restart keepalived
+  ansible.builtin.service:
+    name: keepalived
     state: restarted
 
-- name: restart network
-  ansible.builtin.service: 
-    name: network 
+- name: Restart network
+  ansible.builtin.service:
+    name: network
     state: restarted
