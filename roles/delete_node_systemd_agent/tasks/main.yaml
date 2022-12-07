@@ -8,7 +8,7 @@
       - kubernetes
 
 - name: Creates delete-node script location directory
-  ansible.builtin.template:
+  ansible.builtin.file:
     path: "{{ script_location }}"
     state: directory
     owner: "root"
@@ -16,7 +16,7 @@
     mode: 0700
 
 - name: Creates delete-node log directory
-  ansible.builtin.template:
+  ansible.builtin.file:
     path: "{{ log_location }}"
     state: directory
     owner: "root"
