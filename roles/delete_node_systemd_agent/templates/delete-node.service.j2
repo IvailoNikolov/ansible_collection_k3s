@@ -1,14 +1,15 @@
 [Unit]
 Description=Remove agent from cluster before shutdown
-DefaultDependencies=no
-Before=shutdown.target
+After=k3s.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python {{ script_location }}/main.py
-TimeoutStartSec=0
+RemainAfterExit=true
+ExecStart=/bin/true
+ExecStop=/usr/bin/python {{ script_location }}/main.py
+TimeoutStopSec=300
 User=root
 Group=root
 
 [Install]
-WantedBy=shutdown.target
+WantedBy=multi-user.target
