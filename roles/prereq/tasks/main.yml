@@ -68,15 +68,15 @@
 - name: Install python 3.9
   ansible.builtin.package:
     name:
-      - python3.9
+      - python3.10
       - python3-pip
       - tar
     state: present
 
-- name: Install Python 3.9 and reset selection to auto
+- name: Install Python 3.10 and reset selection to auto
   community.general.alternatives:
     name: python
-    path: /usr/bin/python3.9
+    path: /usr/bin/python3.10
     link: /usr/bin/python
     state: selected
 
