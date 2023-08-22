@@ -8,7 +8,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 K3S_SERVER_URL= "https://{{ master_ip }}:{{ k3s_advertise_port }}"
-K3S_API_AUTHORIZATION = '{{ hostvars['K8S_TOKEN_HOLDER']['token'] }}'
+K3S_API_AUTHORIZATION = '{{ k3s_delete_node_token }}'
 K3S_API_CA = "{{ script_location }}/ca.crt"
 LOG_FILE_Location = "{{ log_location }}"
 

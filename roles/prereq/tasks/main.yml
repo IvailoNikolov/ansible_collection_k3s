@@ -65,7 +65,7 @@
     enabled: false
   when: ansible_facts['os_family'] == "RedHat"
 
-- name: Install python 3.9
+- name: Install python 3.10
   ansible.builtin.package:
     name:
       - python3.10

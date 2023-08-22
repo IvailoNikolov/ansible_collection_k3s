@@ -27,6 +27,10 @@
     template:
       - path: '../templates/serviceaccountsecret.yml.j2'
 
+- name: Pause for 20 second to let service account creation
+  ansible.builtin.pause:
+    seconds : 20
+
 - name: Get Secret detail
   kubernetes.core.k8s_info:
     api_version: v1
@@ -35,9 +39,7 @@
     namespace: kube-system
   register: sa_manage_node_secrets
 
-- name: "Add K8S Token and Hash to dummy host"
-  ansible.builtin.add_host:
-    name: "K8S_TOKEN_HOLDER"
-    hash: "K8S_TOKEN_HOLDER"
-    token: "{{ sa_manage_node_secrets['resources'][0]['data']['token'] | b64decode }}"
-    ca: "{{ sa_manage_node_secrets['resources'][0]['data']['ca.crt'] | b64decode }}"
+- name: Add k3s_delete_node_token and k3s_delete_node_ca
+  ansible.builtin.set_fact:
+    k3s_delete_node_token: "{{ sa_manage_node_secrets['resources'][0]['data']['token'] | b64decode }}"
+    k3s_delete_node_ca: "{{ sa_manage_node_secrets['resources'][0]['data']['ca.crt'] | b64decode }}"
