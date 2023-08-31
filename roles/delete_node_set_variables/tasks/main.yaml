@@ -43,3 +43,5 @@
   ansible.builtin.set_fact:
     k3s_delete_node_token: "{{ sa_manage_node_secrets['resources'][0]['data']['token'] | b64decode }}"
     k3s_delete_node_ca: "{{ sa_manage_node_secrets['resources'][0]['data']['ca.crt'] | b64decode }}"
+  delegate_to: localhost
+  delegate_facts: true
