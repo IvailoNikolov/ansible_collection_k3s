@@ -1,7 +1,11 @@
 ---
+- name: Get interface with default route
+  ansible.builtin.shell: ip -4 route show default | awk -F' ' '{ print $5}'
+  register: default_route_interface
+
 - name: Get ip_variable
   ansible.builtin.set_fact:
-    ip_variable: "ansible_{{ k3s_flannel_iface }}"
+    ip_variable: "ansible_{{ default_route_interface.stdout }}"
 
 - name: Is install HA
   ansible.builtin.set_fact:
