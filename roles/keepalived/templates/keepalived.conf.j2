@@ -27,7 +27,7 @@ vrrp_instance VI_1 {
         auth_pass {{ keepalived_auth_pass }}
     }
     virtual_ipaddress {
-      {{ keepalived_shared_ip }} dev {{ keepalived_shared_iface }}
+      {{ keepalived_shared_ip }} dev {{ default_route_interface.stdout }}
     }
     track_script {
         chk_service
