@@ -1,4 +1,7 @@
 ---
+- name: Get interface with default route
+  ansible.builtin.shell: ip -4 route show default | awk -F' ' '{ print $5}'
+  register: default_route_interface
 
 - name: Copy K3s service file
   ansible.builtin.template:
