@@ -8,7 +8,7 @@ vrrp_script chk_service {
 }
 vrrp_instance VI_1 {
     state {{ keepalived_role }}
-    interface {{ keepalived_shared_iface }}
+    interface {{ default_route_interface.stdout }}
     virtual_router_id {{ keepalived_router_id }}
     priority {{ keepalived_priority }} 
     advert_int 1
