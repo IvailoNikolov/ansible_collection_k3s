@@ -20,7 +20,7 @@ collections:
     - name: community.general
     version: 5.7.0
     - name: ansible.posix
-    - name: git+https://github.com/Frantche/ansible_collection_k3s.git,master
+    - name: git+https://github.com/IvailoNIkolov/ansible_collection_k3s.git,master
 ```
 
 Before using the Kubernetes collection, you need to install it with the Ansible Galaxy CLI:

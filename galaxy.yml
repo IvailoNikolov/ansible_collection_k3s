@@ -1,14 +1,14 @@
-namespace: frantchenco
+namespace: ivailo
 name: k3s
 version: 1.0.0
 readme: README.md
 authors:
-  - your name <example@domain.com>
+  - IvailoNikolov
 description: K3s collection to install k3s
 license_file: 'LICENSE'
 tags: []
-repository: https://github.com/Frantche/ansible_collection_k3s
-documentation: http://docs.example.com
-homepage: http://example.com
-issues: https://github.com/Frantche/ansible_collection_k3s/issues
+repository: https://github.com/IvailoNikolov/ansible_collection_k3s
+documentation: http://docs.k3shome.com
+homepage: http://k3shome.com
+issues: https://github.com/IvailoNikolov/ansible_collection_k3s/issues
 build_ignore: []
