@@ -7,7 +7,7 @@ Documentation for the collection.
 
 Name | Description
 --- | ---
-frantchenco.k3s.github_get_release_name|Get github release name
+ivailo.k3s.github_get_release_name|Get github release name
 
 ## Installation and Usage
 
