@@ -1,6 +1,6 @@
 ---
 - name: Set_fact_release_name
-  frantchenco.k3s.github_get_release_name:
+  ivailo.k3s.github_get_release_name:
     owner: "{{ k3s_github_owner }}"
     repo: "{{ k3s_github_repo }}"
     release_name: "{{ k3s_github_release_name }}"

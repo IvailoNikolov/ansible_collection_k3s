@@ -1,4 +1,4 @@
-# Ansible Collection - frantchenco.k3s
+# Ansible Collection - ivailo.k3s
 
 Documentation for the collection.
 
@@ -123,32 +123,32 @@ Inventory example:
   gather_facts: yes
   become: yes
   roles:
-    - role: frantchenco.k3s.download
-    - role: frantchenco.k3s.prereq
+    - role: ivailo.k3s.download
+    - role: ivailo.k3s.prereq
 
 - hosts: master
   become: yes
   roles:
-    - role: frantchenco.k3s.haproxy
-    - role: frantchenco.k3s.keepalived
+    - role: ivailo.k3s.haproxy
+    - role: ivailo.k3s.keepalived
 
 - hosts: master[0]
   become: no
   strategy: debug
   roles:
-    - role: frantchenco.k3s.delete_node_set_variables
+    - role: ivailo.k3s.delete_node_set_variables
 
 - hosts: master
   serial: 1
   become: yes
   roles:
-    - role: frantchenco.k3s.master
-    - role: frantchenco.k3s.delete_node_systemd_master
+    - role: ivailo.k3s.master
+    - role: ivailo.k3s.delete_node_systemd_master
 
 - hosts: agent
   serial: "30%"
   become: yes
   roles:
-    - role: frantchenco.k3s.node
-    - role: frantchenco.k3s.delete_node_systemd_agent
+    - role: ivailo.k3s.node
+    - role: ivailo.k3s.delete_node_systemd_agent
 ```
